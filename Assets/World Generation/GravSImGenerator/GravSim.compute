@@ -1,0 +1,131 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+
+//Structures
+struct RoomPiece
+{
+    int IsActive;
+    float Drag;
+    float Mass;
+    float2 Velocity;
+    float2 Position;
+    float3 Color;
+};
+struct RoomCenter
+{
+    float2 Velocity;
+    float2 Position;
+    float3 Mass;
+};
+
+//Buffers
+RWStructuredBuffer<RoomPiece> RoomPieces;
+RWStructuredBuffer<RoomCenter> RoomCenters;
+RWTexture2D<float4> Result;
+float Xsize;
+float Ysize;
+
+float DeltaTime;
+float MinMass;
+
+//Functions
+float Distance(float2 P1, float2 P2)
+{
+    float2 Difference = P1 - P2;
+    
+    return pow(pow(Difference.x, 2) + pow(Difference.y, 2), 0.5);
+}
+float2 Force(RoomPiece RP, RoomCenter RC, float Dist)
+{
+    float3 Mass = RP.Color * RC.Mass;
+    
+    return (((Mass.x + Mass.y + Mass.z + MinMass)) / pow(Dist / (Xsize / 2.0), 3)) * (RC.Position - RP.Position);
+}
+
+float3 Saturate(float3 Color)
+{
+    float3 temp = Color;
+    temp.x = min( 1.0, temp.x);
+    temp.x = max(-1.0, temp.x);
+    
+    temp.y = min(1.0, temp.y);
+    temp.y = max(-1.0, temp.y);
+    
+    temp.z = min(1.0, temp.z);
+    temp.z = max(-1.0, temp.z);
+    
+    return temp;
+}
+
+
+[numthreads(32,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    if (RoomPieces[id.x].IsActive != 0)
+    {
+        uint RCcount;
+        uint stride;
+    
+        float2 Acceleration = float2(0.0, 0.0);
+    
+        RoomCenters.GetDimensions(RCcount, stride);
+    
+        
+        for (uint i = 0; i < RCcount; i++)
+        {
+            float Dist = Distance(RoomCenters[i].Position, RoomPieces[id.x].Position);
+            
+            if (Dist < 0.05 * (Xsize / 2.0))
+            {
+                RoomPieces[id.x].IsActive = false;
+                RoomCenters[i].Mass += RoomPieces[id.x].Color * RoomPieces[id.x].Mass;
+                
+                RoomCenters[i].Mass = Saturate(RoomCenters[i].Mass);
+            }
+            else
+            {
+                Acceleration += Force(RoomPieces[id.x], RoomCenters[i], Dist);
+            }
+        }
+        RoomPieces[id.x].Velocity += Acceleration * DeltaTime;
+        RoomPieces[id.x].Velocity -= RoomPieces[id.x].Velocity * RoomPieces[id.x].Drag * DeltaTime;
+        
+        if (RoomPieces[id.x].Position.x < -(Xsize / 2.0))
+        {
+            RoomPieces[id.x].Position.x = (Xsize / 2.0);
+        }
+        if (RoomPieces[id.x].Position.x > (Xsize / 2.0))
+        {
+            RoomPieces[id.x].Position.x = -(Xsize / 2.0);
+        }
+        
+        if (RoomPieces[id.x].Position.y < -(Ysize / 2.0))
+        {
+            RoomPieces[id.x].Position.y = (Ysize / 2.0);
+        }
+        if (RoomPieces[id.x].Position.y > (Ysize / 2.0))
+        {
+            RoomPieces[id.x].Position.y = -(Ysize / 2.0);
+        }
+        
+        
+        RoomPieces[id.x].Position += RoomPieces[id.x].Velocity * DeltaTime;
+        
+        uint XS;
+        uint YS;
+        Result.GetDimensions(XS, YS);
+
+        float2 Position;
+        float2 Size = float2(Xsize, Ysize);
+        
+        Position = (RoomPieces[id.x].Position + (Size * 0.5)) / Size;
+    
+        Position.x *= XS;
+        Position.y *= YS;
+    
+        Result[ceil(Position.xy)] = float4(RoomPieces[id.x].Color, 1.0);
+    }
+}

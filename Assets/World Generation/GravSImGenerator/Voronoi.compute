@@ -1,0 +1,54 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+struct RoomCenter
+{
+    float2 Velocity;
+    float2 Position;
+    float3 Mass;
+};
+
+
+RWTexture2D<float4> Result;
+RWStructuredBuffer<RoomCenter> RoomCenters;
+float Xsize;
+float Ysize;
+
+
+float Distance(RoomCenter RC, float2 Pos)
+{
+    float2 D = abs(RC.Position - Pos);
+    
+    return (D.x + D.y);
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float2 Position;
+    Position.x = ((id.x / 256.0) * Xsize) - (Xsize * 0.5);
+    Position.y = ((id.y / 256.0) * Ysize) - (Ysize * 0.5);
+    
+    
+    float Dist = Distance(RoomCenters[0], Position);
+    float3 Color = RoomCenters[0].Mass;
+    
+    uint RCcount;
+    uint stride;
+    RoomCenters.GetDimensions(RCcount, stride);
+    
+    float temp;
+    for (uint i = 1; i < RCcount; i++)
+    {
+        temp = Distance(RoomCenters[i], Position);
+        if (temp < Dist)
+        {
+            Dist = temp;
+            Color = RoomCenters[i].Mass;
+        }
+    }
+    
+    Result[id.xy] = float4(Color, 1.0);
+    }

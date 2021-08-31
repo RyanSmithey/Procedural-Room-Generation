@@ -1,0 +1,95 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+struct RoomCenter
+{
+    float2 Velocity;
+    float2 Position;
+    float3 Mass;
+};
+
+RWTexture2D<float4> Result;
+RWStructuredBuffer<RoomCenter> RoomCenters;
+float DeltaTime;
+
+float Xsize;
+float Ysize;
+
+float Distance(float2 P1, float2 P2)
+{
+    float2 Difference = P1 - P2;
+    
+    return pow(pow(Difference.x, 2) + pow(Difference.y, 2), 0.5);
+}
+float2 Force(RoomCenter RC1, RoomCenter RC2)
+{
+    float Dist = Distance(RC1.Position, RC2.Position);
+    
+    return -((((RC1.Mass.b + RC2.Mass.b) / 4.0) + 3.0) / pow(Dist, 3)) * (RC1.Position - RC2.Position);
+}
+
+float2 WallForce(RoomCenter RC)
+{
+    float2 Final = 0;
+    Final.x = (((RC.Mass.z * 0.5) + 1.5) / pow(RC.Position.x + 1, 3.0)) - (0.5 / pow(1 - RC.Position.x, 3.0));
+    Final.y = (((RC.Mass.z * 0.5) + 1.5) / pow(RC.Position.y + 1, 3.0)) - (0.5 / pow(1 - RC.Position.y, 3.0));
+    
+    return Final;
+}
+
+[numthreads(32,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    // TODO: insert actual code here!
+
+    uint RCcount;
+    uint stride;
+    
+    RoomCenters.GetDimensions(RCcount, stride);
+    
+    float2 Acceleration = 0.0;
+    
+    //for (uint i = 0; i < id.x; i++)
+    //{
+    //    Acceleration += Force(RoomCenters[i], RoomCenters[id.x]);
+    //}
+    //for (uint j = id.x + 1; j < RCcount; j++)
+    //{
+    //    Acceleration += Force(RoomCenters[j], RoomCenters[id.x]);
+    //}
+    //Acceleration += WallForce(RoomCenters[id.x]);
+    
+    //RoomCenters[id.x].Velocity += Acceleration * DeltaTime;
+    //RoomCenters[id.x].Velocity *= 0.99;
+    //RoomCenters[id.x].Position += RoomCenters[id.x].Velocity * DeltaTime;
+    
+    uint XS;
+    uint YS;
+    Result.GetDimensions(XS, YS);
+    
+    float2 Position;
+    float2 Size = float2(Xsize, Ysize);
+    
+    Position = (RoomCenters[id.x].Position + (Size * 0.5)) / Size;
+    
+    Position.x *= XS;
+    Position.y *= YS;
+    
+    uint2 Xdir = uint2(1, 0);
+    uint2 Ydir = uint2(0, 1);
+    
+    Result[ceil(Position.xy) - Ydir - Xdir] = float4(RoomCenters[id.x].Mass, 1.0);
+    Result[ceil(Position.xy) - Ydir]        = float4(RoomCenters[id.x].Mass, 1.0);
+    Result[ceil(Position.xy) - Ydir + Xdir] = float4(RoomCenters[id.x].Mass, 1.0);
+    
+    Result[ceil(Position.xy) - Xdir] = float4(RoomCenters[id.x].Mass, 1.0);
+    Result[ceil(Position.xy)]        = float4(RoomCenters[id.x].Mass, 1.0);
+    Result[ceil(Position.xy) + Xdir] = float4(RoomCenters[id.x].Mass, 1.0);
+    
+    Result[ceil(Position.xy) + Ydir - Xdir] = float4(RoomCenters[id.x].Mass, 1.0);
+    Result[ceil(Position.xy) + Ydir]        = float4(RoomCenters[id.x].Mass, 1.0);
+    Result[ceil(Position.xy) + Ydir + Xdir] = float4(RoomCenters[id.x].Mass, 1.0);
+    
+}

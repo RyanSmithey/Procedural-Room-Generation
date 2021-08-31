@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 7c1aaa1cb1634ca4bbb6a94a9f314763
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - GravSim: {fileID: 7200000, guid: 2d60c912c4b0e0949a5c29ddf94d0192, type: 3}
+  - AddShader: {fileID: 7200000, guid: d747ea43cbba3594c8602b887e185563, type: 3}
+  - SetValues: {fileID: 7200000, guid: 8ed64df8d8d48f947bfd5e53da9787c7, type: 3}
+  - DisplayRC: {fileID: 7200000, guid: d4007b4def7413a478006a9fae9764c1, type: 3}
+  - FinalizeTex: {fileID: 7200000, guid: 2ad5a854d1ba37d4d8ea32fca13c9f7e, type: 3}
+  - Final: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
